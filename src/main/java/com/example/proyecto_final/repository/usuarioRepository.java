@@ -5,7 +5,7 @@ import com.example.proyecto_final.entity.Usuario;
 import java.util.List;
 import java.util.Optional;
 
-public interface usuarioRepository extends JpaRepository<Usuario, Integer> {
+public interface UsuarioRepository extends JpaRepository<Usuario, Integer> {
     Optional<Usuario> findByUsuario(String usuario);
     List<Usuario> findByEstadoTrue();
 }
