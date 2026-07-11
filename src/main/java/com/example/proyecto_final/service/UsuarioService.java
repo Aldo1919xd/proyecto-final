@@ -61,4 +61,33 @@ public class UsuarioService {
                 request);
         return guardado;
     }
+
+    @Transactional
+    public void cambiarPassword(Integer idUsuario, String nuevoPassword, Usuario usuarioActual,HttpServletRequest request){
+        Usuario usuario = usuarioRepository.findById(idUsuario).orElseThrow();
+        usuario.setPassword(passwordEncoder.encode(nuevoPassword));
+        usuario.setFechaModificacion(LocalDateTime.now());
+        usuarioRepository.save(usuario);
+        auditoriaService.registrar(usuarioActual, "Seguridad", "Usuario", 
+                "UPDATE", idUsuario, null, "{\"password\":\"Cambiada\"}", request);
+    }
+
+    @Transactional
+    public void actualizar2fa(Usuario usuario){
+        usuario.setFechaModificacion(LocalDateTime.now());
+        usuarioRepository.save(usuario);
+    }
+
+    @Transactional
+    public void eliminarLogico(Integer id,Usuario usuarioActual, HttpServletRequest request){
+        Usuario usuario = usuarioRepository.findById(id).orElseThrow();
+        if(usuario.getIdUsuario() == 1){
+            throw new RuntimeException("No se puede eliminar al superUsuario");
+        }
+        usuario.setEstado(false);
+        usuario.setFechaModificacion(LocalDateTime.now());
+        usuarioRepository.save(usuario);
+        auditoriaService.registrar(usuarioActual, "Seguridad", "Usuario", 
+                "DELETE", id, "{\"estado\":true}", "{\"estado\":false}", request);
+    }
 }
