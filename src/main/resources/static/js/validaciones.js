@@ -29,4 +29,160 @@ document.addEventListener('DOMContentLoaded', function() {
         return true;
     }
 
+    document.querySelectorAll('.form-control, .form-select').forEach(function (el){
+        el.addEventListener('blur', function() {
+            validarRequerido(this);
+            var validator = this.getAttribute('data-val');
+            if(validator && window['val_' + validator]){
+                window['val_' + validator](this);
+            }
+        });
+        el.addEventListener('input', function(){
+            if(this.classList.contains('is-invalid')){
+                validarRequerido(this);
+                var validator = this.getAttribute('data-val');
+                if(validator && window['val_' + validator]){
+                    window['val_' + validator](this);
+                }
+            }
+        });
+    });
+
+    window.val_dni = function (input) {
+        if(!input.value) return;
+        if(!/^\d{8}$/.test(input.value)){
+            mostrarError(input, 'El DNI debe tener exactamente 8 digitos');
+        } else {
+            limpiarError(input);
+        }
+    };
+
+    window.val_ruc = function (input) {
+        if(!input.value) return;
+        if(!/^\d{11}$/.test(input.value)){
+            mostrarError(input, 'El RUC debe tener exactamente 11 digitos');
+        } else {
+            limpiarError(input);
+        }
+    };
+
+    window.val_ce = function (input) {
+        if(!input.value) return;
+        if(!/^[a-zA-Z0-9]{1,12}$/.test(input.value)){
+            mostrarError(input, 'El CE debe tener maximo 12 caracteres alfanumericos');
+        } else {
+            limpiarError(input);
+        }
+    };
+
+    window.val_numeroDocumento = function (input){
+        var row = input.closest('tr, .mb-3, .col');
+        var tipoSelect = row ? row.querySelector('[name$="tipoDocumento.codTipoDocumento"], .tipo-doc-select') : null;
+        if(!tipoSelect) tipoSelect = document.querySelector('[name$="tipoDocumento.codTipoDocumento"]');
+        if(!tipoSelect || !tipoSelect.value) return;
+        var tipoText = tipoSelect.options[tipoSelect.selectedIndex] ? tipoSelect.options[tipoSelect.selectedIndex].text : '';
+        var val = input.value;
+        if(tipoText === 'DNI' && !/^\d{8}$/.test(val)){
+            mostrarError(input, 'El DNI debe tener exactamente 8 digitos');
+        } else if (tipoText === 'RUC' && !/^\d{11}$/.test(val)){
+            mostrarError(input, 'El RUC debe tener exactamente 11 digitos');
+        } else if (tipoText === 'CE' && !/^[a-zA-Z0-9]{1,12}$/.test(val)){
+            mostrarError(input, 'El CE debe tener maximo 12 caracteres alfanumerico');
+        } else if (tipoText === 'Pasaporte' && (val.length < 5 || val.length > 15)){
+            mostrarError(input, 'El pasaporte debe tener entre 5 a 15 caracteres');
+        } else {
+            limpiarError(input);
+        }
+    };
+
+    window.val_precio = function (input) {
+        if(!input.value) return;
+        var num = parseFloat(input.value);
+        if(isNaN(num) || num <= 0) {
+            mostrarError(input, 'El precio debe ser mayor a 0');
+        } else {
+            limpiarError(input);
+        }
+    };
+
+    window.val_positivo = function (input){
+        if(!input.vale) return;
+        var num = parseInt(input.value, 10);
+        if(isNaN(num) || num < 0){
+            mostrarError(input, 'El valor no puede ser negativo');
+        } else {
+            limpiarError(input);
+        }
+    };
+
+    window.val_fechaPasada = function (input){
+        if(!input.value) return;
+        var fecha = new Date(input.value);
+        if(fecha > new Date()){
+            mostrarError(input, 'La fecha no puede ser futura');
+        } else {
+            limpiarError(input);
+        }
+    };
+
+    window.val_username = function (input){
+        if(!input.value) return;
+        if(input.value.length < 3) {
+            mostrarError(input, 'El usuario debe tener al menos 3 caracteres');
+        } else if (!/^[a-zA-Z0-9]+$/.test(input.value)){
+            mostrarError(input, 'Solo se permiten letras y numeros');
+        } else {
+            limpiarError(input);
+        }
+    };
+
+    window.val_password = function (input){
+        if (!input.value) return;
+        if(input.value.length < 6){
+            mostrarError(input, 'La contraseña debe tener al menos 6 caracteres');
+        } else {
+            limpiarError(input);
+        }
+    };
+
+    document.querySelectorAll('form').forEach(function (form){
+        form.addEventListener('submit', function (e) {
+            var firstError = null;
+            this.querySelectorAll('is-invalid').forEach(function (el){
+                el.classList.remove('is-invalid');
+            });
+            this.querySelectorAll('[required]').forEach(function (el){
+                if(el.disabled) return;
+                if(!el.value || el.value.trim() === ''){
+                    mostrarError(el, 'Este campo es obligatorio');
+                    if(!firstError) firstError = el;
+                }
+            });
+
+            this.querySelectorAll('[data-val]').forEach(function (el){
+                if(el.disabled) return;
+                var validator = el.getAttribute('data-val');
+                if(window['val_' + validator]) {
+                    window['val_' + validator](el);
+                    if(el.classList.contains('is-invalid') && !firstError){
+                        firstError = el;
+                    }
+                }
+            });
+
+            var nombreCliente = this.querySelector('[name="nombreCliente"]');
+            var razonSocial = this.querySelector('[name="razonSocial"');
+            if(nombreCliente && razonSocial){
+                var nc = nombreCliente.value.trim();
+                var rs = razonSocial.value.trim();
+                if(!nc && !rs){
+                    mostrarError(nombreCliente, 'Debe ingresar al menos un nombre o razon social');
+                    if(!firstError) firstError = nombreCliente;
+                }
+            }
+
+            var cantUnd = this.querySelector('[name="CantidadUnidad"]');
+            var cantFrac = this.querySelector('[name="CantidadFraccion"]');
+        })
+    })
 })
