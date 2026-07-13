@@ -183,6 +183,58 @@ document.addEventListener('DOMContentLoaded', function() {
 
             var cantUnd = this.querySelector('[name="CantidadUnidad"]');
             var cantFrac = this.querySelector('[name="CantidadFraccion"]');
-        })
-    })
-})
+            if(cantUnd && cantFrac && !cantUnd.disabled && !cantFrac.disabled){
+                var cu = parseInt(cantUnd.value, 10) || 0;
+                var cf = parseInt(cantFrac.value, 10) || 0;
+                if(cu === 0 && cf === 0){
+                    mostrarError(cantUnd, 'Debe ingresar al menos una unidad o fraccion');
+                    if(!firstError) firstError = cantUnd;
+                }
+            }
+
+            if(firstError){
+                e.preventDefault();
+                firstError.focus();
+            }
+        });
+    });
+
+    var tipoDocSelect = document.querySelector('[name="tipoDocumento.codTipoDocumento"]');
+    var numDocInput = document.querySelector('[name="numeroDocumento"]');
+    if(tipoDocSelect && numDocInput){
+        function actualizarValidadorDoc(){
+            var tipoText = tipoDocSelect.options[tipoDocSelect.selectedIndex]
+                ? tipoDocSelect.options[tipoDocSelect.selectedIndex].text : '';
+            numDocInput.setAttribute('data-val', 'numeroDocumento');
+            limpiarError(numDocInput);
+        }
+        tipoDocSelect.addEventListener('change', actualizarValidadorDoc);
+        actualizarValidadorDoc();
+    }
+
+    document.querySelectorAll('.solo-numeros').forEach(function (el){
+        el.addEventListener('input', function(){
+            this.value = this.value.replace(/\D/g, '');
+        });
+    });
+
+    document.querySelectorAll('.solo-letras').forEach(function (el){
+        el.addEventListener('input', function(){
+            this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '');
+        });
+    });
+
+    document.querySelectorAll('.sin-especiales').forEach(function (el){
+        el.addEventListener('input', function(){
+            this.value = this.value.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-_.,]/g, '');
+        });
+    });
+
+    document.querySelectorAll('input[type="number"]').forEach(function (el){
+        el.addEventListener('blur', function(){
+            if(this.value &&  parseFloat(this.value) < 0){
+                this.value = Math.abs(parseFloat(this.value));
+            }
+        });
+    });
+});

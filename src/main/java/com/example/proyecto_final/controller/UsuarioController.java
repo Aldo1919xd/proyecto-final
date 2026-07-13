@@ -20,7 +20,6 @@ import com.example.proyecto_final.service.PermisoService;
 import com.example.proyecto_final.service.RolService;
 import com.example.proyecto_final.service.UsuarioService;
 import com.warrenstrange.googleauth.GoogleAuthenticator;
-import com.warrenstrange.googleauth.GoogleAuthenticatorConfig;
 import com.warrenstrange.googleauth.GoogleAuthenticatorKey;
 import com.warrenstrange.googleauth.GoogleAuthenticatorQRGenerator;
 
