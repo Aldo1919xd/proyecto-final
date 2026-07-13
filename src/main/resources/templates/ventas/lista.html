@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragmentos :: head('Ventas')">
+<body>
+<div th:replace="fragmentos :: navbar"></div>
+
+<div class="container content">
+  <div th:if="${param.exitoAnulado}" class="alert alert-success">Venta anulada correctamente</div>
+  <div th:if="${param.error}" class="alert alert-danger" th:text="${param.error}">Error</div>
+  <div class="page-header">
+    <h2>Ventas</h2>
+    <a th:if="${permisosMap.containsKey('Ventas') and permisosMap.get('Ventas').crear}" href="/ventas/nuevo" class="btn btn-primary">Nueva Venta</a>
+  </div>
+  <div class="table-wrapper">
+    <table class="table table-bordered table-hover">
+      <thead>
+        <tr>
+          <th>Codigo</th>
+          <th>Comprobante</th>
+          <th>Cliente</th>
+          <th>Subtotal</th>
+          <th>IGV</th>
+          <th>Total</th>
+          <th>Fecha</th>
+          <th>Usuario</th>
+          <th>Estado</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr th:each="v : ${ventas}">
+          <td th:text="${v.codVenta}">1</td>
+          <td th:text="${v.tipoComprobante} + ' ' + ${v.serie} + '-' + ${v.numeroCorrelativo}">F001-1</td>
+          <td th:text="${v.cliente.nombreCliente}">Cliente</td>
+          <td th:text="${v.subtotal}">0.00</td>
+          <td th:text="${v.igv}">0.00</td>
+          <td th:text="${v.total}">0.00</td>
+          <td th:text="${#temporals.format(v.fechaHora, 'yyyy-MM-dd HH:mm:ss')}">2024-01-01 00:00:00</td>
+          <td th:text="${v.usuarioRegistro.usuario}">admin</td>
+          <td>
+            <span th:if="${v.estado}" class="badge bg-success">Activo</span>
+            <span th:unless="${v.estado}" class="badge bg-danger">Anulado</span>
+          </td>
+          <td>
+            <form th:if="${v.estado and permisosMap.containsKey('Anular Venta') and permisosMap.get('Anular Venta').ver}" th:action="@{/ventas/anular/{id}(id=${v.codVenta})}" method="post" style="display:inline" onsubmit="return confirm('¿Está seguro de anular esta venta? Se restaurará el stock.')">
+              <button type="submit" class="btn btn-sm btn-outline-danger">Anular</button>
+            </form>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div th:replace="fragmentos :: scripts"></div>
+</body>
+</html>
