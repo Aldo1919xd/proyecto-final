@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
-<head th:replece="fragmentos :: head('Inicio - AppVentas')">
+<head th:replace="fragmentos :: head('Inicio - AppVentas')"></head>
 <body>
 <div th:replace="fragmentos :: navbar"></div>
 <div class="container content">
@@ -41,7 +41,7 @@
                 <p>Registro de Clientes</p>
             </a>
         </div>
-        <div th:if="${permisosMap.constainsKey('Productos') and permisosMap.get('Productos').ver}" class="col-md-3">
+        <div th:if="${permisosMap.containsKey('Productos') and permisosMap.get('Productos').ver}" class="col-md-3">
             <a href="/productos" class="dashboard-card">
                 <div class="card-icon" style="background-color: var(--rp-gold);">
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -54,8 +54,8 @@
                 <p>Inventario de Productos</p>
             </a>
         </div>
-        <div th:if="${permisosMap.constainsKey('Ventas') and premisosMap.get('Ventas').ver}" class="col-md-3">
-            <a href="/ventas" class="dasboard-card">
+        <div th:if="${permisosMap.containsKey('Ventas') and permisosMap.get('Ventas').ver}" class="col-md-3">
+            <a href="/ventas" class="dashboard-card">
                 <div class="card-icon" style="background-color: var(--rp-love);">
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
@@ -71,5 +71,4 @@
 </div>
 <div th:replace="fragmentos :: scripts"></div>
 </body>
-</head>
 </html>

@@ -1,0 +1,11 @@
+FROM mariadb:11.4
+
+ENV MARIADB_DATABASE=ventas_db \
+    MARIADB_USER=ventas_db \
+    MARIADB_PASSWORD=root \
+    MARIADB_ROOT_PASSWORD=root \
+    TZ=America/Lima
+
+COPY sql/init.sql /docker-entrypoint-initdb.d/01-init.sql
+
+EXPOSE 3306

@@ -1,0 +1,24 @@
+FROM eclipse-temurin:21-jdk AS build
+
+WORKDIR /workspace
+
+COPY mvnw pom.xml ./
+COPY .mvn .mvn
+COPY src src
+
+RUN chmod +x mvnw && ./mvnw -DskipTests package
+
+FROM eclipse-temurin:21-jre
+
+WORKDIR /app
+
+ENV SPRING_DATASOURCE_URL=jdbc:mysql://bd:3306/ventas_db?useSSL=false&serverTimezone=America/Lima&allowPublicKeyRetrieval=true \
+    SPRING_DATASOURCE_USERNAME=ventas \
+    SPRING_DATASOURCE_PASSWORD=root \
+    SERVER_PORT=8080
+
+COPY --from=build /workspace/target/*.war /app/app.war
+
+EXPOSE 8080
+
+ENTRYPOINT ["java", "-jar", "/app/app.war"]
