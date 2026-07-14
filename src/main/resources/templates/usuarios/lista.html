@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head th:replace="fragmentos :: head('Usuarios')">
+<body>
 <div th:replace="fragmentos :: navbar"></div>
 <div class="container content">
     <div class="page-header">
@@ -25,7 +26,7 @@
             <tbody>
                 <tr th:each="u : ${usuarios}">
                     <td th:text="${u.idUsuario}">1</td>
-                    <td th:text="${u.usuario}">Usuario</td>
+                    <td th:text="${u.usuario}">usuario</td>
                     <td th:text="${u.rol.nombreRol}">Rol</td>
                     <td>
                         <span th:if="${u.secretKey2fa != null and !u.secretKey2fa.isEmpty()}" class="badge bg-success">Activo</span>
@@ -36,7 +37,7 @@
                         <span th:unless="${u.estado}" class="badge bg-success">Inactivo</span>
                     </td>
                     <td>
-                        <a th:if="${permisosMap.containsKey('Usuarios') and permisosMap.get('Usuarios'.editar)}" th:href="@{/usuarios/editar/{id}(id=${u.idUsuario})}" class="btn btn-sm btn-outline-primary">Editar</a>
+                        <a th:if="${permisosMap.containsKey('Usuarios') and permisosMap.get('Usuarios').editar}" th:href="@{/usuarios/editar/{id}(id=${u.idUsuario})}" class="btn btn-sm btn-outline-primary">Editar</a>
                         <a th:if="${permisosMap.containsKey('Usuarios') and permisosMap.get('Usuarios').eliminar}" th:href="@{/usuarios/eliminar/{id}(id=${u.idUsuario})}" class="btn btn-sm btn-outline-danger"
                             onclick="return confirm('Eliminar este usuario?')">Eliminar</a>
                     </td>
