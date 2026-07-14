@@ -98,8 +98,8 @@ public class UsuarioController {
         return "usuarios/cambiar-password";
     }
 
-    @GetMapping("/cambiar-password")
-    public String cambiarPassoword(@RequestParam String passwordNueva,
+    @PostMapping("/cambiar-password")
+    public String cambiarPassword(@RequestParam String passwordNueva,
                                     @RequestParam(required = false) String passwordConfirmacion,
                                     Authentication auth, HttpServletRequest request, Model model){
         if(passwordNueva == null || passwordNueva.length() < 6){
@@ -169,7 +169,7 @@ public class UsuarioController {
         return "usuarios/2fa-desactivar";
     }
 
-    @GetMapping("/2fa/desactivar")
+    @PostMapping("/2fa/desactivar")
     public String desactivar2fa(@RequestParam int codigo, Authentication auth, Model model){
         Usuario actual = usuarioService.buscarPorUsuario(auth.getName()).orElseThrow();
         if(actual.getSecretKey2fa() == null || actual.getSecretKey2fa().isEmpty()){
