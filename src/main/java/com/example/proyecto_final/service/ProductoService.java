@@ -1,19 +1,35 @@
 package com.example.proyecto_final.service;
 
-import com.example.proyecto_final.entity.Producto;
+import com.example.proyecto_final.entity.*;
+import com.example.proyecto_final.repository.KardexRepository;
+import com.example.proyecto_final.repository.ProductoComposicionRepository;
 import com.example.proyecto_final.repository.ProductoRepository;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class ProductoService {
-
     private final ProductoRepository productoRepository;
+    private final ProductoComposicionRepository composicionRepository;
+    private final KardexRepository kardexRepository;
+    private final AuditoriaService auditoriaService;
 
-    public ProductoService(ProductoRepository productoRepository) {
+    public ProductoService(ProductoRepository productoRepository,
+                           ProductoComposicionRepository composicionRepository,
+                           KardexRepository kardexRepository,
+                           AuditoriaService auditoriaService) {
         this.productoRepository = productoRepository;
+        this.composicionRepository = composicionRepository;
+        this.kardexRepository = kardexRepository;
+        this.auditoriaService = auditoriaService;
     }
 
     public List<Producto> listarActivos() {
@@ -22,5 +38,178 @@ public class ProductoService {
 
     public Optional<Producto> buscarPorId(Integer id) {
         return productoRepository.findById(id);
+    }
+
+    public List<Producto> buscarPorNombre(String nombre) {
+        return productoRepository.findByNombreProductoContainingIgnoreCaseAndEstadoTrue(nombre);
+    }
+
+    public List<Producto> listarPosiblesComponentes() {
+        return productoRepository.findByEstadoTrue().stream()
+                .filter(p -> !Boolean.TRUE.equals(p.getEsPack()))
+                .collect(Collectors.toList());
+    }
+
+    public List<ProductoComposicion> obtenerComposicion(Integer codProductoPack) {
+        return composicionRepository.findByProductoPack_CodProducto(codProductoPack);
+    }
+
+    public BigDecimal calcularPrecioPack(Integer codProductoPack) {
+        List<ProductoComposicion> comps = composicionRepository.findByProductoPack_CodProducto(codProductoPack);
+        BigDecimal suma = BigDecimal.ZERO;
+        for (ProductoComposicion c : comps) {
+            BigDecimal sub = c.getProductoComponente().getPrecioUnitario()
+                    .multiply(BigDecimal.valueOf(c.getCantidad()));
+            suma = suma.add(sub);
+        }
+        return suma;
+    }
+
+    @Transactional
+    public Producto guardar(Producto producto, List<Integer> componenteIds, List<Integer> componenteCantidades,
+                            Usuario usuarioActual, HttpServletRequest request) {
+        boolean esNuevo = producto.getCodProducto() == null;
+        Map<Integer, Producto> compMap = new HashMap<>();
+
+        if (Boolean.TRUE.equals(producto.getEsPack())) {
+            if (componenteIds == null || componenteIds.isEmpty()) {
+                throw new RuntimeException("Un pack debe tener al menos un componente");
+            }
+            List<Integer> ids = componenteIds.stream()
+                    .filter(id -> id != null)
+                    .distinct()
+                    .collect(Collectors.toList());
+            List<Producto> componentes = productoRepository.findAllById(ids);
+            for (Producto comp : componentes) {
+                compMap.put(comp.getCodProducto(), comp);
+                if (comp.getPrecioUnitario() == null
+                        || comp.getPrecioUnitario().compareTo(BigDecimal.ZERO) <= 0) {
+                    throw new RuntimeException("El componente \"" + comp.getNombreProducto()
+                            + "\" tiene precio 0. Asígnale un precio primero.");
+                }
+            }
+            int totalItem = 0;
+            for (int i = 0; i < componenteIds.size(); i++) {
+                if (componenteIds.get(i) == null) continue;
+                int cant = componenteCantidades != null && i < componenteCantidades.size()
+                        ? componenteCantidades.get(i) : 1;
+                totalItem += cant;
+            }
+            producto.setCantidadItem(totalItem);
+        } else {
+            producto.setEsPack(false);
+            if (producto.getCantidadItem() == null || producto.getCantidadItem() < 1) {
+                producto.setCantidadItem(1);
+            }
+            if (producto.getPrecioUnitario() == null
+                    || producto.getPrecioUnitario().compareTo(BigDecimal.ZERO) <= 0) {
+                throw new RuntimeException("El precio unitario debe ser mayor a 0");
+            }
+            if (producto.getCantidadItem() > 1
+                    && (producto.getPrecioFraccion() == null
+                    || producto.getPrecioFraccion().compareTo(BigDecimal.ZERO) <= 0)) {
+                throw new RuntimeException("Si Items por Unidad es mayor a 1, debe asignar un Precio Fraccion mayor a 0");
+            }
+        }
+
+        Producto guardado = productoRepository.save(producto);
+
+        composicionRepository.deleteByProductoPack_CodProducto(guardado.getCodProducto());
+
+        if (Boolean.TRUE.equals(producto.getEsPack()) && componenteIds != null) {
+            for (int i = 0; i < componenteIds.size(); i++) {
+                if (componenteIds.get(i) == null) continue;
+                ProductoComposicion pc = new ProductoComposicion();
+                pc.setProductoPack(guardado);
+                Producto compManaged = compMap.get(componenteIds.get(i));
+                pc.setProductoComponente(compManaged != null ? compManaged : new Producto(componenteIds.get(i)));
+                pc.setCantidad(componenteCantidades != null && i < componenteCantidades.size()
+                        ? componenteCantidades.get(i) : 1);
+                composicionRepository.save(pc);
+            }
+        }
+
+        if (Boolean.TRUE.equals(producto.getEsPack())) {
+            BigDecimal precioCalculado = calcularPrecioPack(guardado.getCodProducto());
+            guardado.setPrecioUnitario(precioCalculado);
+            productoRepository.saveAndFlush(guardado);
+        }
+
+        auditoriaService.registrar(usuarioActual, "Maestras", "Producto",
+                esNuevo ? "INSERT" : "UPDATE",
+                guardado.getCodProducto(),
+                esNuevo ? null : "{\"nombre\":\"" + producto.getNombreProducto() + "\"}",
+                "{\"nombre\":\"" + guardado.getNombreProducto() + "\"}",
+                request);
+        return guardado;
+    }
+
+    @Transactional
+    public void eliminarLogico(Integer id, Usuario usuarioActual, HttpServletRequest request) {
+        Producto producto = productoRepository.findById(id).orElseThrow();
+        producto.setEstado(false);
+        productoRepository.save(producto);
+        auditoriaService.registrar(usuarioActual, "Maestras", "Producto",
+                "DELETE", id, "{\"estado\":true}", "{\"estado\":false}", request);
+    }
+
+    @Transactional
+    public void menudear(Integer codProductoPack, Integer cantidadDesarmar,
+                         Usuario usuarioActual, HttpServletRequest request) {
+        Producto pack = productoRepository.findById(codProductoPack).orElseThrow();
+        if (!Boolean.TRUE.equals(pack.getEsPack())) {
+            throw new RuntimeException("El producto no es un pack");
+        }
+        if (pack.getCantidadUnidad() < cantidadDesarmar) {
+            throw new RuntimeException("Stock insuficiente del pack");
+        }
+
+        List<ProductoComposicion> comps = composicionRepository.findByProductoPack_CodProducto(codProductoPack);
+        if (comps.isEmpty()) {
+            throw new RuntimeException("El pack no tiene composicion definida");
+        }
+
+        int stockPackAntes = pack.getCantidadUnidad();
+        pack.setCantidadUnidad(pack.getCantidadUnidad() - cantidadDesarmar);
+        productoRepository.save(pack);
+
+        Kardex kardexSalida = new Kardex();
+        kardexSalida.setProducto(pack);
+        kardexSalida.setTipoOperacion(new TipoOperacion(5));
+        kardexSalida.setCantidadInicial(stockPackAntes);
+        kardexSalida.setCantidadMovimiento(cantidadDesarmar);
+        kardexSalida.setCantidadFinal(pack.getCantidadUnidad());
+        kardexSalida.setSaldoUnitario(pack.getCantidadUnidad());
+        kardexSalida.setSaldoFraccionario(pack.getCantidadFraccion());
+        kardexSalida.setObservacion("[U] Menudeo: " + cantidadDesarmar + " pack(s) desarmado(s)");
+        kardexSalida.setUsuarioRegistro(usuarioActual);
+        kardexRepository.save(kardexSalida);
+
+        for (ProductoComposicion comp : comps) {
+            Producto componente = comp.getProductoComponente();
+            int stockCompAntes = componente.getCantidadUnidad();
+            int aumento = cantidadDesarmar * comp.getCantidad();
+            componente.setCantidadUnidad(stockCompAntes + aumento);
+            productoRepository.save(componente);
+
+            Kardex kardexEntrada = new Kardex();
+            kardexEntrada.setProducto(componente);
+            kardexEntrada.setTipoOperacion(new TipoOperacion(5));
+            kardexEntrada.setCantidadInicial(stockCompAntes);
+            kardexEntrada.setCantidadMovimiento(aumento);
+            kardexEntrada.setCantidadFinal(componente.getCantidadUnidad());
+            kardexEntrada.setSaldoUnitario(componente.getCantidadUnidad());
+            kardexEntrada.setSaldoFraccionario(componente.getCantidadFraccion());
+            kardexEntrada.setObservacion("[U] Menudeo: " + aumento + " und desde pack " + pack.getNombreProducto());
+            kardexEntrada.setUsuarioRegistro(usuarioActual);
+            kardexRepository.save(kardexEntrada);
+        }
+
+        auditoriaService.registrar(usuarioActual, "Almacen", "Producto",
+                "MENUDEO", codProductoPack,
+                "{\"stockPack\":" + stockPackAntes + "}",
+                "{\"stockPack\":" + pack.getCantidadUnidad()
+                        + ",\"componentes\":\"+" + cantidadDesarmar + " packs\"}",
+                request);
     }
 }

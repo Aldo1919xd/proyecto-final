@@ -2,10 +2,7 @@ package com.example.proyecto_final.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -23,7 +20,7 @@ public class Producto {
     @Column(nullable = false, length = 120)
     private String nombreProducto;
 
-    @NotBlank(message = "Debe seleccionar una categoria")
+    @NotNull(message = "Debe seleccionar una categoria")
     @ManyToOne
     @JoinColumn(name = "codCategoria", nullable = false)
     private Categoria categoria;
@@ -63,6 +60,10 @@ public class Producto {
     private List<ProductoComposicion> composiciones = new ArrayList<>();
 
     public Producto() {
+    }
+
+    public Producto(Integer codProducto) {
+        this.codProducto = codProducto;
     }
 
     public Integer getCodProducto() {
