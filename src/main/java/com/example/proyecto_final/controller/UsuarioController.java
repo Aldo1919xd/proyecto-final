@@ -125,9 +125,12 @@ public class UsuarioController {
     }
 
     @GetMapping("/2fa/configurar")
-    public String configurar2fa(Model model, Authentication auth){
+    public String configurar2fa(@RequestParam(required = false) String redirect, Model model, Authentication auth){
         Usuario actual = usuarioService.buscarPorUsuario(auth.getName()).orElseThrow();
         if(actual.getSecretKey2fa() != null && !actual.getSecretKey2fa().isEmpty()){
+            if (redirect != null && !redirect.isEmpty()) {
+                return "redirect:/usuarios/2fa/verificar-sesion?redirect=" + redirect;
+            }
             return "redirect:/usuarios/2fa/estado";
         }
         GoogleAuthenticator gAuth = new GoogleAuthenticator();
@@ -137,13 +140,15 @@ public class UsuarioController {
         model.addAttribute("secret", secret);
         model.addAttribute("uri", uri);
         model.addAttribute("usuario", auth.getName());
+        model.addAttribute("redirect", redirect);
         return "usuarios/2fa-configurar";
     }
 
     @PostMapping("/2fa/verificar")
     public String verificar2fa(@RequestParam String secret,
                                 @RequestParam int codigo, 
-                                Authentication auth, Model model){
+                                @RequestParam(required = false) String redirect,
+                                Authentication auth, HttpSession session, Model model){
         Usuario actual = usuarioService.buscarPorUsuario(auth.getName()).orElseThrow();
         GoogleAuthenticator gAuth = new GoogleAuthenticator();
         boolean valido = gAuth.authorize(secret, codigo);
@@ -153,14 +158,30 @@ public class UsuarioController {
             model.addAttribute("secret", secret);
             model.addAttribute("uri", uri);
             model.addAttribute("usuario", auth.getName());
+            model.addAttribute("redirect", redirect);
             model.addAttribute("error", "Codigo invalido, intente nuevamente.");
             return "usuarios/2fa-configurar";
         }
         actual.setSecretKey2fa(secret);
         usuarioService.actualizar2fa(actual);
-        return "redirect:/usuarios/2fa/estado?exito";
+        session.setAttribute("2fa_verified", true);
+        if(redirect != null && !redirect.isEmpty()){
+            return "redirect:" + redirect;
+        }
+        return "redirect:/inicio";
     }
 
+    @GetMapping("/2fa/status-verificacion")
+    @ResponseBody
+    public java.util.Map<String, Object> statusVerificacion(Authentication auth, HttpSession session) {
+        Usuario actual = auth != null ? usuarioService.buscarPorUsuario(auth.getName()).orElse(null) : null;
+        boolean has2fa = actual != null && actual.getSecretKey2fa() != null && !actual.getSecretKey2fa().isEmpty();
+        Boolean verificado = (Boolean) session.getAttribute("2fa_verified");
+        return java.util.Map.of(
+            "has2fa", has2fa,
+            "verificado", verificado != null && verificado
+        );
+    }
     
     @GetMapping("/2fa/estado")
     public String estado2fa(Model model, Authentication auth){

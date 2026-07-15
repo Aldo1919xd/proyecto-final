@@ -6,6 +6,9 @@ ENV MARIADB_DATABASE=ventas_db \
     MARIADB_ROOT_PASSWORD=root \
     TZ=America/Lima
 
+RUN ln -sf /usr/share/zoneinfo/America/Lima /etc/localtime && \
+    echo "America/Lima" > /etc/timezone
+    
 COPY sql/init.sql /docker-entrypoint-initdb.d/01-init.sql
 
 EXPOSE 3306

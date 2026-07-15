@@ -54,7 +54,13 @@ public class IngresoController {
             return "ingresos/formulario";
         }
         Usuario actual = usuarioService.buscarPorUsuario(auth.getName()).orElseThrow();
-        ingresoService.registrarIngreso(ingreso, actual, request);
+        try {
+            ingresoService.registrarIngreso(ingreso, actual, request);
+        } catch (org.springframework.orm.ObjectOptimisticLockingFailureException | jakarta.persistence.OptimisticLockException e) {
+            return "redirect:/ingresos/nuevo?error=" + java.net.URLEncoder.encode("La informacion fue modificada por otro usuario. Por favor, actualice la pantalla antes de continuar.", java.nio.charset.StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            return "redirect:/ingresos/nuevo?error=" + java.net.URLEncoder.encode(e.getMessage(), java.nio.charset.StandardCharsets.UTF_8);
+        }
         return "redirect:/ingresos/nuevo?exito";
     }
 }

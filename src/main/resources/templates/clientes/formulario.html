@@ -37,18 +37,18 @@
         <div class="row mb-3">
           <div class="col-md-6">
             <label class="form-label">Nombre Cliente</label>
-            <input type="text" name="nombreCliente" class="form-control solo-letras" th:value="*{nombreCliente}" maxlength="150">
+            <input type="text" name="nombreCliente" id="nombreCliente" class="form-control solo-letras" th:value="*{nombreCliente}" maxlength="100">
             <div class="invalid-feedback" th:if="${#fields.hasErrors('nombreCliente')}" th:errors="*{nombreCliente}"></div>
           </div>
           <div class="col-md-6">
             <label class="form-label">Razon Social</label>
-            <input type="text" name="razonSocial" class="form-control" th:value="*{razonSocial}" maxlength="150">
+            <input type="text" name="razonSocial" id="razonSocial" class="form-control" th:value="*{razonSocial}" maxlength="100">
           </div>
         </div>
         <div class="row mb-3">
           <div class="col-md-4">
             <label class="form-label">Fecha Nacimiento</label>
-            <input type="date" name="fechaNacimiento" class="form-control" th:value="*{fechaNacimiento}"
+            <input type="date" name="fechaNacimiento" id="fechaNacimiento" class="form-control" th:value="*{fechaNacimiento}"
                    data-val="fechaPasada">
             <div class="invalid-feedback"></div>
           </div>
@@ -64,5 +64,64 @@
 </div>
 
 <div th:replace="fragmentos :: scripts"></div>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var tipoDocSelect = document.querySelector('.tipo-doc-select');
+  var nombreClienteInput = document.getElementById('nombreCliente');
+  var razonSocialInput = document.getElementById('razonSocial');
+  var fechaNacimientoInput = document.getElementById('fechaNacimiento');
+
+  function ajustarCampos() {
+    var selectedOption = tipoDocSelect.options[tipoDocSelect.selectedIndex];
+    var tipoText = selectedOption ? selectedOption.text.trim().toUpperCase() : '';
+
+    if (tipoText === 'RUC') {
+      
+      razonSocialInput.disabled = false;
+      razonSocialInput.setAttribute('required', 'required');
+
+      
+      nombreClienteInput.disabled = true;
+      nombreClienteInput.value = '';
+      nombreClienteInput.removeAttribute('required');
+      nombreClienteInput.classList.remove('is-invalid');
+
+      
+      fechaNacimientoInput.disabled = true;
+      fechaNacimientoInput.value = '';
+      fechaNacimientoInput.classList.remove('is-invalid');
+    } else if (tipoText === '' || tipoText === 'SELECCIONE...') {
+      
+      razonSocialInput.disabled = true;
+      razonSocialInput.value = '';
+      razonSocialInput.removeAttribute('required');
+      razonSocialInput.classList.remove('is-invalid');
+
+      nombreClienteInput.disabled = true;
+      nombreClienteInput.value = '';
+      nombreClienteInput.removeAttribute('required');
+      nombreClienteInput.classList.remove('is-invalid');
+
+      fechaNacimientoInput.disabled = true;
+      fechaNacimientoInput.value = '';
+      fechaNacimientoInput.classList.remove('is-invalid');
+    } else {
+      
+      nombreClienteInput.disabled = false;
+      nombreClienteInput.setAttribute('required', 'required');
+      fechaNacimientoInput.disabled = false;
+
+      
+      razonSocialInput.disabled = true;
+      razonSocialInput.value = '';
+      razonSocialInput.removeAttribute('required');
+      razonSocialInput.classList.remove('is-invalid');
+    }
+  }
+
+  tipoDocSelect.addEventListener('change', ajustarCampos);
+  ajustarCampos(); 
+});
+</script>
 </body>
 </html>

@@ -21,6 +21,7 @@
         </div>
         <form th:action="@{/usuarios/2fa/verificar}" method="post" class="card-form">
             <input type="hidden" name="secret" th:value="${secret}">
+            <input type="hidden" name="redirect" th:value="${redirect}">
             <div class="mb-3">
             <label class="form-label">Codigo de verificacion (6 digitos)</label>
             <input type="text" name="codigo" class="form-control text-center solo-numeros"

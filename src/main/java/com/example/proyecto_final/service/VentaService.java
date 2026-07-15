@@ -122,12 +122,12 @@ public class VentaService {
 
             productoRepository.save(producto);
 
-            // Si se convirtieron unidades a fracciones (Menudeo automático)
+            
             if (unidadesConvertidas > 0) {
-                // 1. Salida de Unidades por conversión
+                
                 Kardex kSalidaU = new Kardex();
                 kSalidaU.setProducto(producto);
-                kSalidaU.setTipoOperacion(new TipoOperacion(5)); // Menudeo
+                kSalidaU.setTipoOperacion(new TipoOperacion(5)); 
                 kSalidaU.setCantidadInicial(stockUndAntes);
                 kSalidaU.setCantidadMovimiento(unidadesConvertidas);
                 kSalidaU.setCantidadFinal(stockUndAntes - unidadesConvertidas);
@@ -138,25 +138,25 @@ public class VentaService {
                 kSalidaU.setUsuarioRegistro(usuarioActual);
                 kardexRepository.save(kSalidaU);
 
-                // 2. Entrada de Fracciones por conversión
+                
                 Kardex kEntradaF = new Kardex();
                 kEntradaF.setProducto(producto);
-                kEntradaF.setTipoOperacion(new TipoOperacion(5)); // Menudeo
+                kEntradaF.setTipoOperacion(new TipoOperacion(5)); 
                 kEntradaF.setCantidadInicial(stockFraccAntes);
                 kEntradaF.setCantidadMovimiento(unidadesConvertidas * fraccPorUnidad);
                 kEntradaF.setCantidadFinal(stockFraccAntes + (unidadesConvertidas * fraccPorUnidad));
                 kEntradaF.setSaldoUnitario(stockUndAntes - unidadesConvertidas);
-                kEntradaF.setSaldoFraccionario(stockFraccAntes + (unidadesConvertidas * 10));
+                kEntradaF.setSaldoFraccionario(stockFraccAntes + (unidadesConvertidas * fraccPorUnidad));
                 kEntradaF.setCodDocumento(docNro);
                 kEntradaF.setObservacion("[F] Conversión automática (Menudeo)");
                 kEntradaF.setUsuarioRegistro(usuarioActual);
                 kardexRepository.save(kEntradaF);
             }
 
-            // Registrar la Venta (Venta) en Kardex
+            
             Kardex kardex = new Kardex();
             kardex.setProducto(producto);
-            kardex.setTipoOperacion(new TipoOperacion(2)); // Venta
+            kardex.setTipoOperacion(new TipoOperacion(2)); 
             if (detalle.getTipoVenta().equals("FRACCION")) {
                 int inicialF = stockFraccAntes + (unidadesConvertidas * fraccPorUnidad);
                 kardex.setCantidadInicial(inicialF);
@@ -226,7 +226,7 @@ public class VentaService {
 
             Kardex kardex = new Kardex();
             kardex.setProducto(producto);
-            kardex.setTipoOperacion(new TipoOperacion(3)); // Extorno
+            kardex.setTipoOperacion(new TipoOperacion(3)); 
             kardex.setCantidadInicial(detalle.getTipoVenta().equals("FRACCION") ? stockFraccAntes : stockUndAntes);
             kardex.setCantidadMovimiento(detalle.getCantidad());
             kardex.setCantidadFinal(detalle.getTipoVenta().equals("FRACCION")
@@ -249,5 +249,13 @@ public class VentaService {
                 "DELETE", codVenta,
                 "{\"estado\":true}", "{\"estado\":false}",
                 request);
+    }
+
+    public List<VentaDetalle> buscarDetallesPorVenta(Integer codVenta) {
+        return ventaDetalleRepository.findByVentaCodVenta(codVenta);
+    }
+
+    public java.util.Optional<VentaCabecera> buscarPorId(Integer id) {
+        return ventaCabeceraRepository.findById(id);
     }
 }

@@ -46,7 +46,7 @@ public class IngresoService {
         if (ingreso.getCantidadUnidad() != null && ingreso.getCantidadUnidad() > 0) {
             Kardex kU = new Kardex();
             kU.setProducto(producto);
-            kU.setTipoOperacion(new TipoOperacion(1)); // Ingreso
+            kU.setTipoOperacion(new TipoOperacion(1)); 
             kU.setCantidadInicial(stockUndAntes);
             kU.setCantidadMovimiento(ingreso.getCantidadUnidad());
             kU.setCantidadFinal(stockUndAntes + ingreso.getCantidadUnidad());
@@ -60,7 +60,7 @@ public class IngresoService {
         if (ingreso.getCantidadFraccion() != null && ingreso.getCantidadFraccion() > 0) {
             Kardex kF = new Kardex();
             kF.setProducto(producto);
-            kF.setTipoOperacion(new TipoOperacion(1)); // Ingreso
+            kF.setTipoOperacion(new TipoOperacion(1)); 
             kF.setCantidadInicial(stockFraccAntes);
             kF.setCantidadMovimiento(ingreso.getCantidadFraccion());
             kF.setCantidadFinal(stockFraccAntes + ingreso.getCantidadFraccion());

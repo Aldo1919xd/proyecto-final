@@ -59,6 +59,8 @@
             <span class="badge bg-success" th:if="${a.operacion == 'INSERT'}">Inserción</span>
             <span class="badge bg-primary" th:if="${a.operacion == 'UPDATE'}">Actualización</span>
             <span class="badge bg-danger" th:if="${a.operacion == 'DELETE'}">Eliminación</span>
+            <span class="badge bg-warning text-dark" th:if="${a.operacion == 'MENUDEO'}">Menudeo</span>
+            <span class="badge bg-secondary" th:if="${a.operacion != 'INSERT' and a.operacion != 'UPDATE' and a.operacion != 'DELETE' and a.operacion != 'MENUDEO'}" th:text="${a.operacion}"></span>
           </td>
           <td class="text-start">
             <small class="text-muted d-block">ID: [[${a.codigoRegistro}]]</small>

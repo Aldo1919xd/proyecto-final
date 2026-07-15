@@ -73,8 +73,10 @@ public class ProductoController {
         Usuario actual = usuarioService.buscarPorUsuario(auth.getName()).orElseThrow();
         try {
             productoService.guardar(producto, componenteId, componenteCantidad, actual, request);
+        } catch (org.springframework.orm.ObjectOptimisticLockingFailureException | jakarta.persistence.OptimisticLockException e) {
+            return "redirect:/productos?error=" + java.net.URLEncoder.encode("La informacion fue modificada por otro usuario. Por favor, actualice la pantalla antes de continuar.", java.nio.charset.StandardCharsets.UTF_8);
         } catch (RuntimeException e) {
-            return "redirect:/productos?error=" + e.getMessage();
+            return "redirect:/productos?error=" + java.net.URLEncoder.encode(e.getMessage(), java.nio.charset.StandardCharsets.UTF_8);
         }
         return "redirect:/productos";
     }
@@ -161,8 +163,9 @@ public class ProductoController {
     public String menudear(@RequestParam Integer codProducto,
                            @RequestParam Integer cantidad,
                            Authentication auth, HttpServletRequest request, HttpSession session) {
-        if (requiereVerificacion2fa(auth, session)) {
-            return "redirect:/usuarios/2fa/verificar-sesion?redirect=/productos";
+        String redirect2fa = validarYRedireccionar2fa(auth, session, "/productos");
+        if (redirect2fa != null) {
+            return redirect2fa;
         }
         Usuario actual = usuarioService.buscarPorUsuario(auth.getName()).orElseThrow();
         try {
@@ -173,13 +176,18 @@ public class ProductoController {
         return "redirect:/productos?exitoMenudeo";
     }
 
-    private boolean requiereVerificacion2fa(Authentication auth, HttpSession session) {
-        if (auth == null || !auth.isAuthenticated()) return false;
+    private String validarYRedireccionar2fa(Authentication auth, HttpSession session, String targetUrl) {
+        if (auth == null || !auth.isAuthenticated()) return "redirect:/login";
         Usuario actual = usuarioService.buscarPorUsuario(auth.getName()).orElse(null);
-        if (actual == null) return false;
+        if (actual == null) return "redirect:/login";
         boolean tiene2fa = actual.getSecretKey2fa() != null && !actual.getSecretKey2fa().isEmpty();
-        if (!tiene2fa) return false;
+        if (!tiene2fa) {
+            return "redirect:/usuarios/2fa/configurar?redirect=" + targetUrl;
+        }
         Boolean verificado = (Boolean) session.getAttribute("2fa_verified");
-        return verificado == null || !verificado;
+        if (verificado == null || !verificado) {
+            return "redirect:/usuarios/2fa/verificar-sesion?redirect=" + targetUrl;
+        }
+        return null;
     }
 }

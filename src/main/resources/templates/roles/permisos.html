@@ -27,11 +27,11 @@
               <span th:unless="${item.hasChildren}" style="margin-right:16px;display:inline-block"></span>
               <input type="checkbox" class="tree-master-check" th:attr="data-master-id=${item.funcionalidad.idFuncionalidad}"
                      th:checked="${#maps.containsKey(permisosRolMap, item.funcionalidad.idFuncionalidad)
-                       and permisosRolMap.get(item.funcionalidad.idFuncionalidad).ver
-                       and permisosRolMap.get(item.funcionalidad.idFuncionalidad).crear
-                       and permisosRolMap.get(item.funcionalidad.idFuncionalidad).editar
-                       and permisosRolMap.get(item.funcionalidad.idFuncionalidad).eliminar
-                       and permisosRolMap.get(item.funcionalidad.idFuncionalidad).imprimir}">
+                       and (permisosRolMap.get(item.funcionalidad.idFuncionalidad).ver
+                       or permisosRolMap.get(item.funcionalidad.idFuncionalidad).crear
+                       or permisosRolMap.get(item.funcionalidad.idFuncionalidad).editar
+                       or permisosRolMap.get(item.funcionalidad.idFuncionalidad).eliminar
+                       or permisosRolMap.get(item.funcionalidad.idFuncionalidad).imprimir)}">
               <span th:text="${item.funcionalidad.nombre}" class="fw-medium tree-checks-toggle" style="cursor:pointer">Funcionalidad</span>
               </div>
               <div class="tree-checks ms-4">

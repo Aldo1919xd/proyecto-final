@@ -94,7 +94,8 @@ public class VentaController {
                 return "redirect:/ventas/nuevo?error=stockInsuficiente&producto=" + prod.getNombreProducto();
             }
             if ("FRACCION".equals(detalle.getTipoVenta())) {
-                int fraccionesDisponibles = prod.getCantidadFraccion() + prod.getCantidadUnidad() * 10;
+                int items = prod.getCantidadItem() != null ? prod.getCantidadItem() : 1;
+                int fraccionesDisponibles = prod.getCantidadFraccion() + prod.getCantidadUnidad() * items;
                 if (fraccionesDisponibles < cant) {
                     return "redirect:/ventas/nuevo?error=stockInsuficiente&producto=" + prod.getNombreProducto();
                 }
@@ -108,16 +109,22 @@ public class VentaController {
         }
 
         try {
-            ventaService.registrarVenta(cabecera, detalles, actual, request);
+            VentaCabecera guardada = ventaService.registrarVenta(cabecera, detalles, actual, request);
+            return "redirect:/ventas/nuevo?exito&id=" + guardada.getCodVenta();
+        } catch (org.springframework.orm.ObjectOptimisticLockingFailureException | jakarta.persistence.OptimisticLockException e) {
+            return "redirect:/ventas/nuevo?error=" + java.net.URLEncoder.encode("La informacion fue modificada por otro usuario. Por favor, actualice la pantalla antes de continuar.", java.nio.charset.StandardCharsets.UTF_8);
         } catch (Exception e) {
-            return "redirect:/ventas/nuevo?error=" + e.getMessage();
+            return "redirect:/ventas/nuevo?error=" + java.net.URLEncoder.encode(e.getMessage(), java.nio.charset.StandardCharsets.UTF_8);
         }
-        return "redirect:/ventas/nuevo?exito";
     }
 
     @PostMapping("/anular/{id}")
-    public String anular(@PathVariable Integer id, Authentication auth, HttpServletRequest request) {
+    public String anular(@PathVariable Integer id, Authentication auth, HttpServletRequest request, HttpSession session) {
         if (!permisoService.tieneEliminar(auth, "Anular Venta")) return "redirect:/ventas?error=sinPermiso";
+        String redirect2fa = validarYRedireccionar2fa(auth, session, "/ventas");
+        if (redirect2fa != null) {
+            return redirect2fa;
+        }
         Usuario actual = usuarioService.buscarPorUsuario(auth.getName()).orElseThrow();
         try {
             ventaService.anularVenta(id, actual, request);
@@ -125,5 +132,55 @@ public class VentaController {
             return "redirect:/ventas?error=" + e.getMessage();
         }
         return "redirect:/ventas?exitoAnulado";
+    }
+
+    private String validarYRedireccionar2fa(Authentication auth, HttpSession session, String targetUrl) {
+        if (auth == null || !auth.isAuthenticated()) return "redirect:/login";
+        Usuario actual = usuarioService.buscarPorUsuario(auth.getName()).orElse(null);
+        if (actual == null) return "redirect:/login";
+        boolean tiene2fa = actual.getSecretKey2fa() != null && !actual.getSecretKey2fa().isEmpty();
+        if (!tiene2fa) {
+            return "redirect:/usuarios/2fa/configurar?redirect=" + targetUrl;
+        }
+        Boolean verificado = (Boolean) session.getAttribute("2fa_verified");
+        if (verificado == null || !verificado) {
+            return "redirect:/usuarios/2fa/verificar-sesion?redirect=" + targetUrl;
+        }
+        return null;
+    }
+
+    @GetMapping("/detalle/{id}")
+    @ResponseBody
+    public List<java.util.Map<String, Object>> verDetalle(@PathVariable Integer id) {
+        List<VentaDetalle> detalles = ventaService.buscarDetallesPorVenta(id);
+        List<java.util.Map<String, Object>> res = new ArrayList<>();
+        for (VentaDetalle d : detalles) {
+            java.util.Map<String, Object> map = new java.util.HashMap<>();
+            map.put("codVentaDetalle", d.getCodDetalle());
+            map.put("productoNombre", d.getProducto().getNombreProducto());
+            map.put("cantidad", d.getCantidad());
+            map.put("precioUnitario", d.getPrecioUnitario());
+            map.put("subtotal", d.getSubtotal());
+            map.put("tipoVenta", d.getTipoVenta());
+            res.add(map);
+        }
+        return res;
+    }
+
+    @GetMapping("/{id}")
+    @ResponseBody
+    public java.util.Map<String, Object> buscarVenta(@PathVariable Integer id) {
+        VentaCabecera v = ventaService.buscarPorId(id).orElseThrow();
+        java.util.Map<String, Object> map = new java.util.HashMap<>();
+        map.put("codVenta", v.getCodVenta());
+        map.put("comprobante", v.getTipoComprobante() + " " + v.getSerie() + "-" + v.getNumeroCorrelativo());
+        map.put("cliente", v.getCliente().getNombreCliente() != null && !v.getCliente().getNombreCliente().isEmpty() ? v.getCliente().getNombreCliente() : (v.getCliente().getRazonSocial() != null ? v.getCliente().getRazonSocial() : ""));
+        map.put("subtotal", v.getSubtotal());
+        map.put("igv", v.getIgv());
+        map.put("total", v.getTotal());
+        map.put("fecha", v.getFechaHora().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")));
+        map.put("usuario", v.getUsuarioRegistro().getUsuario());
+        map.put("estado", v.getEstado() ? "Activo" : "Anulado");
+        return map;
     }
 }

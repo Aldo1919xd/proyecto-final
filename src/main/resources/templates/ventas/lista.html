@@ -31,7 +31,7 @@
         <tr th:each="v : ${ventas}">
           <td th:text="${v.codVenta}">1</td>
           <td th:text="${v.tipoComprobante} + ' ' + ${v.serie} + '-' + ${v.numeroCorrelativo}">F001-1</td>
-          <td th:text="${v.cliente.nombreCliente}">Cliente</td>
+          <td th:text="${v.cliente.nombreCliente != null && !v.cliente.nombreCliente.isEmpty() ? v.cliente.nombreCliente : (v.cliente.razonSocial != null ? v.cliente.razonSocial : '')}">Cliente</td>
           <td th:text="${v.subtotal}">0.00</td>
           <td th:text="${v.igv}">0.00</td>
           <td th:text="${v.total}">0.00</td>
@@ -42,7 +42,19 @@
             <span th:unless="${v.estado}" class="badge bg-danger">Anulado</span>
           </td>
           <td>
-            <form th:if="${v.estado and permisosMap.containsKey('Anular Venta') and permisosMap.get('Anular Venta').ver}" th:action="@{/ventas/anular/{id}(id=${v.codVenta})}" method="post" style="display:inline" onsubmit="return confirm('¿Está seguro de anular esta venta? Se restaurará el stock.')">
+            <button type="button" class="btn btn-sm btn-outline-info btn-detalle"
+                    th:data-id="${v.codVenta}"
+                    th:data-comprobante="${v.tipoComprobante} + ' ' + ${v.serie} + '-' + ${v.numeroCorrelativo}"
+                    th:data-cliente="${v.cliente.nombreCliente != null && !v.cliente.nombreCliente.isEmpty() ? v.cliente.nombreCliente : (v.cliente.razonSocial != null ? v.cliente.razonSocial : '')}"
+                    th:data-subtotal="${v.subtotal}"
+                    th:data-igv="${v.igv}"
+                    th:data-total="${v.total}"
+                    th:data-fecha="${#temporals.format(v.fechaHora, 'dd/MM/yyyy HH:mm:ss')}"
+                    th:data-usuario="${v.usuarioRegistro.usuario}"
+                    th:data-estado="${v.estado ? 'Activo' : 'Anulado'}">
+              Detalle
+            </button>
+            <form th:if="${v.estado and permisosMap.containsKey('Anular Venta') and permisosMap.get('Anular Venta').ver}" th:action="@{/ventas/anular/{id}(id=${v.codVenta})}" method="post" style="display:inline" class="form-anular">
               <button type="submit" class="btn btn-sm btn-outline-danger">Anular</button>
             </form>
           </td>
@@ -52,6 +64,135 @@
   </div>
 </div>
 
+
+<div class="modal fade" id="detalleVentaModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Detalle de Venta: <span id="lblComprobante" class="fw-bold text-primary">—</span></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <p class="mb-1"><strong>Cliente:</strong> <span id="lblCliente">—</span></p>
+            <p class="mb-1"><strong>Fecha y Hora:</strong> <span id="lblFecha">—</span></p>
+            <p class="mb-1"><strong>Vendedor:</strong> <span id="lblUsuario">—</span></p>
+          </div>
+          <div class="col-md-6 text-end">
+            <p class="mb-1"><strong>Estado:</strong> <span id="lblEstado" class="badge">—</span></p>
+            <p class="mb-1"><strong>Subtotal:</strong> S/ <span id="lblSubtotal">0.00</span></p>
+            <p class="mb-1"><strong>IGV:</strong> S/ <span id="lblIgv">0.00</span></p>
+            <p class="mb-1" style="font-size: 1.1rem;"><strong>Total:</strong> <strong class="text-primary">S/ <span id="lblTotal">0.00</span></strong></p>
+          </div>
+        </div>
+        <hr>
+        <h6 class="section-title">Productos Vendidos</h6>
+        <div class="table-wrapper">
+          <table class="table table-bordered table-hover table-sm" id="tablaDetalleProductos">
+            <thead class="table-dark">
+              <tr>
+                <th>Producto</th>
+                <th>Tipo Venta</th>
+                <th>Cantidad</th>
+                <th>P. Unitario</th>
+                <th>Subtotal</th>
+              </tr>
+            </thead>
+            <tbody>
+              
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div th:replace="fragmentos :: scripts"></div>
+<script>
+  function verificar2faYProceder(targetUrl, callback) {
+    fetch('/usuarios/2fa/status-verificacion')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (!data.has2fa) {
+          window.location.href = '/usuarios/2fa/configurar?redirect=' + encodeURIComponent(targetUrl);
+        } else if (!data.verificado) {
+          window.location.href = '/usuarios/2fa/verificar-sesion?redirect=' + encodeURIComponent(targetUrl);
+        } else {
+          callback();
+        }
+      });
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.form-anular').forEach(function (form) {
+      form.addEventListener('submit', function (e) {
+        var currentForm = this;
+        if (currentForm.getAttribute('data-2fa-checked') === 'true') {
+          return; 
+        }
+        e.preventDefault();
+        verificar2faYProceder('/ventas', function () {
+          if (confirm('¿Está seguro de anular esta venta? Se restaurará el stock.')) {
+            currentForm.setAttribute('data-2fa-checked', 'true');
+            currentForm.submit();
+          }
+        });
+      });
+    });
+
+    document.querySelectorAll('.btn-detalle').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var id = this.getAttribute('data-id');
+        
+        document.getElementById('lblComprobante').textContent = this.getAttribute('data-comprobante');
+        document.getElementById('lblCliente').textContent = this.getAttribute('data-cliente');
+        document.getElementById('lblFecha').textContent = this.getAttribute('data-fecha');
+        document.getElementById('lblUsuario').textContent = this.getAttribute('data-usuario');
+        
+        var estado = this.getAttribute('data-estado');
+        var lblEstado = document.getElementById('lblEstado');
+        lblEstado.textContent = estado;
+        lblEstado.className = 'badge ' + (estado === 'Activo' ? 'bg-success' : 'bg-danger');
+        
+        document.getElementById('lblSubtotal').textContent = parseFloat(this.getAttribute('data-subtotal')).toFixed(2);
+        document.getElementById('lblIgv').textContent = parseFloat(this.getAttribute('data-igv')).toFixed(2);
+        document.getElementById('lblTotal').textContent = parseFloat(this.getAttribute('data-total')).toFixed(2);
+        
+        var tbody = document.querySelector('#tablaDetalleProductos tbody');
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center">Cargando productos...</td></tr>';
+        
+        fetch('/ventas/detalle/' + id)
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            tbody.innerHTML = '';
+            if (data.length === 0) {
+              tbody.innerHTML = '<tr><td colspan="5" class="text-center">No se encontraron productos.</td></tr>';
+              return;
+            }
+            data.forEach(function (d) {
+              var tr = document.createElement('tr');
+              tr.innerHTML = '<td>' + d.productoNombre + '</td>' +
+                             '<td>' + (d.tipoVenta === 'FRACCION' ? 'Fracción' : 'Unidad') + '</td>' +
+                             '<td>' + d.cantidad + '</td>' +
+                             '<td>S/ ' + parseFloat(d.precioUnitario).toFixed(2) + '</td>' +
+                             '<td>S/ ' + parseFloat(d.subtotal).toFixed(2) + '</td>';
+              tbody.appendChild(tr);
+            });
+          })
+          .catch(function (err) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Error al cargar productos.</td></tr>';
+          });
+
+        var modal = new bootstrap.Modal(document.getElementById('detalleVentaModal'));
+        modal.show();
+      });
+    });
+  });
+</script>
 </body>
 </html>

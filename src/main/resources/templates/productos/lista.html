@@ -66,7 +66,7 @@
         <div class="modal-body">
           <p id="modalProductoName"></p>
           <label class="form-label">Cantidad de packs a desarmar</label>
-          <input type="number" name="cantidad" class="form-control" value="1" min="1" required>
+          <input type="number" name="cantidad" class="form-control" value="1" min="1" max="99999" required>
         </div>
         <div class="modal-footer">
           <button type="submit" class="btn btn-primary">Desarmar</button>
@@ -79,6 +79,20 @@
 
 <div th:replace="fragmentos :: scripts"></div>
 <script>
+  function verificar2faYProceder(targetUrl, callback) {
+    fetch('/usuarios/2fa/status-verificacion')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (!data.has2fa) {
+          window.location.href = '/usuarios/2fa/configurar?redirect=' + encodeURIComponent(targetUrl);
+        } else if (!data.verificado) {
+          window.location.href = '/usuarios/2fa/verificar-sesion?redirect=' + encodeURIComponent(targetUrl);
+        } else {
+          callback();
+        }
+      });
+  }
+
   function menudear(id, nombre) {
     document.getElementById('modalCodProducto').value = id;
     document.getElementById('modalProductoName').textContent = 'Desarmar: ' + nombre;
@@ -88,10 +102,13 @@
 
   document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.btn-menudear').forEach(function(btn) {
-      btn.addEventListener('click', function() {
+      btn.addEventListener('click', function(e) {
+        e.preventDefault();
         var id = this.getAttribute('data-id');
         var nombre = this.getAttribute('data-nombre');
-        menudear(id, nombre);
+        verificar2faYProceder('/productos', function() {
+          menudear(id, nombre);
+        });
       });
     });
   });

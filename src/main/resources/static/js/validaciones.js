@@ -105,6 +105,16 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 
+    window.val_precioFraccion = function (input) {
+        if(!input.value) return;
+        var num = parseFloat(input.value);
+        if(isNaN(num) || num < 0) {
+            mostrarError(input, 'El precio de fracción no puede ser negativo');
+        } else {
+            limpiarError(input);
+        }
+    };
+
     window.val_positivo = function (input){
         if(!input.vale) return;
         var num = parseInt(input.value, 10);
@@ -148,11 +158,11 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('form').forEach(function (form){
         form.addEventListener('submit', function (e) {
             var firstError = null;
-            this.querySelectorAll('is-invalid').forEach(function (el){
+            this.querySelectorAll('.is-invalid').forEach(function (el){
                 el.classList.remove('is-invalid');
             });
             this.querySelectorAll('[required]').forEach(function (el){
-                if(el.disabled) return;
+                if(el.disabled || (el.offsetWidth === 0 && el.offsetHeight === 0)) return;
                 if(!el.value || el.value.trim() === ''){
                     mostrarError(el, 'Este campo es obligatorio');
                     if(!firstError) firstError = el;
@@ -160,7 +170,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
 
             this.querySelectorAll('[data-val]').forEach(function (el){
-                if(el.disabled) return;
+                if(el.disabled || (el.offsetWidth === 0 && el.offsetHeight === 0)) return;
                 var validator = el.getAttribute('data-val');
                 if(window['val_' + validator]) {
                     window['val_' + validator](el);
@@ -170,8 +180,25 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
 
+            this.querySelectorAll('input[type="number"]').forEach(function (el){
+                if(el.disabled || (el.offsetWidth === 0 && el.offsetHeight === 0)) return;
+                var val = parseFloat(el.value);
+                if (!isNaN(val)) {
+                    var min = parseFloat(el.getAttribute('min'));
+                    var max = parseFloat(el.getAttribute('max'));
+                    if (!isNaN(min) && val < min) {
+                        mostrarError(el, 'El valor mínimo es ' + min);
+                        if (!firstError) firstError = el;
+                    }
+                    if (!isNaN(max) && val > max) {
+                        mostrarError(el, 'El valor máximo permitido es ' + max);
+                        if (!firstError) firstError = el;
+                    }
+                }
+            });
+
             var nombreCliente = this.querySelector('[name="nombreCliente"]');
-            var razonSocial = this.querySelector('[name="razonSocial"');
+            var razonSocial = this.querySelector('[name="razonSocial"]');
             if(nombreCliente && razonSocial){
                 var nc = nombreCliente.value.trim();
                 var rs = razonSocial.value.trim();
@@ -181,8 +208,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
 
-            var cantUnd = this.querySelector('[name="CantidadUnidad"]');
-            var cantFrac = this.querySelector('[name="CantidadFraccion"]');
+            var cantUnd = this.querySelector('[name="cantidadUnidad"]') || this.querySelector('[name="CantidadUnidad"]');
+            var cantFrac = this.querySelector('[name="cantidadFraccion"]') || this.querySelector('[name="CantidadFraccion"]');
             if(cantUnd && cantFrac && !cantUnd.disabled && !cantFrac.disabled){
                 var cu = parseInt(cantUnd.value, 10) || 0;
                 var cf = parseInt(cantFrac.value, 10) || 0;
@@ -231,6 +258,15 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     document.querySelectorAll('input[type="number"]').forEach(function (el){
+        var maxAttr = el.getAttribute('max');
+        if (maxAttr) {
+            var maxLength = maxAttr.toString().length;
+            el.addEventListener('input', function() {
+                if (this.value.length > maxLength) {
+                    this.value = this.value.slice(0, maxLength);
+                }
+            });
+        }
         el.addEventListener('blur', function(){
             if(this.value &&  parseFloat(this.value) < 0){
                 this.value = Math.abs(parseFloat(this.value));

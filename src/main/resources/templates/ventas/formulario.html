@@ -6,7 +6,12 @@
 
 <div class="container content">
   <h2>Registrar Venta</h2>
-  <div th:if="${param.exito}" class="alert alert-success">Venta registrada correctamente</div>
+   <div th:if="${param.exito}" class="alert alert-success d-flex justify-content-between align-items-center">
+     <span>Venta registrada correctamente</span>
+     <button type="button" class="btn btn-sm btn-outline-success bg-white border" id="btnVerComprobante" style="display:none;">
+       📄 Ver Comprobante
+     </button>
+   </div>
   <div th:if="${param.error != null and param.error[0] == 'sinCliente'}" class="alert alert-danger">Debe seleccionar un cliente</div>
   <div th:if="${param.error != null and param.error[0] == 'sinProductos'}" class="alert alert-danger">Debe agregar al menos un producto a la venta</div>
   <div th:if="${param.error != null and param.error[0] == 'productoNoEncontrado'}" class="alert alert-danger">Producto no encontrado</div>
@@ -16,7 +21,10 @@
   </div>
   <div th:if="${param.error != null and param.error[0] == 'otpRequerido'}" class="alert alert-warning">Debe ingresar el codigo OTP de 2FA</div>
   <div th:if="${param.error != null and param.error[0] == 'otpInvalido'}" class="alert alert-danger">Codigo OTP invalido</div>
-  <form th:action="@{/ventas/guardar}" method="post" class="card-form">
+  
+  <div th:if="${param.error != null and param.error[0] != 'sinCliente' and param.error[0] != 'sinProductos' and param.error[0] != 'productoNoEncontrado' and param.error[0] != 'cantidadInvalida' and param.error[0] != 'stockInsuficiente' and param.error[0] != 'otpRequerido' and param.error[0] != 'otpInvalido'}"
+       class="alert alert-danger" th:text="${param.error[0]}"></div>
+  <form th:action="@{/ventas/guardar}" method="post" class="card-form" onsubmit="return validarVentaForm()">
     <div class="row mb-3">
       <div class="col-md-8">
         <label class="form-label">Cliente</label>
@@ -24,6 +32,7 @@
           <input type="text" id="clienteNombre" class="form-control" readonly placeholder="Seleccione un cliente..." required>
           <input type="hidden" name="cliente.codCliente" id="clienteId">
           <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalCliente">Buscar</button>
+          <a href="/clientes/nuevo" class="btn btn-outline-success" target="_blank">+ Registrar</a>
         </div>
         <div class="invalid-feedback"></div>
       </div>
@@ -54,7 +63,7 @@
               <div class="invalid-feedback"></div>
             </td>
             <td>
-              <input type="number" name="cantidad" class="form-control cantidad-input" value="1" min="1" data-val="positivo">
+              <input type="number" name="cantidad" class="form-control cantidad-input" value="1" min="1" max="9999" data-val="positivo">
               <div class="invalid-feedback"></div>
             </td>
             <td>
@@ -68,7 +77,7 @@
             </td>
             <td>
               <button type="button" class="btn btn-sm btn-outline-primary btn-buscar-producto" data-bs-toggle="modal" data-bs-target="#modalProducto">Buscar</button>
-              <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('tr').remove()">Quitar</button>
+              <button type="button" class="btn btn-sm btn-outline-danger" onclick="quitarFila(this)">Quitar</button>
             </td>
           </tr>
         </tbody>
@@ -76,6 +85,27 @@
     </div>
     <div class="d-flex gap-2 mb-3">
       <button type="button" class="btn btn-outline-primary btn-sm" onclick="agregarFila()">+ Agregar Producto</button>
+    </div>
+
+    
+    <div class="row justify-content-end mb-4">
+      <div class="col-md-4">
+        <div class="card p-3 bg-light">
+          <div class="d-flex justify-content-between mb-1">
+            <span class="text-muted">Subtotal:</span>
+            <span class="fw-bold">S/ <span id="formSubtotal">0.00</span></span>
+          </div>
+          <div class="d-flex justify-content-between mb-1">
+            <span class="text-muted">IGV (18%):</span>
+            <span class="fw-bold">S/ <span id="formIgv">0.00</span></span>
+          </div>
+          <hr class="my-2">
+          <div class="d-flex justify-content-between mb-1 text-primary" style="font-size: 1.1rem;">
+            <strong>Total:</strong>
+            <strong>S/ <span id="formTotal">0.00</span></strong>
+          </div>
+        </div>
+      </div>
     </div>
 
     <button type="submit" class="btn btn-primary">Registrar Venta</button>
@@ -93,6 +123,7 @@
         <div class="input-group mb-3">
           <input type="text" id="buscarClienteInput" class="form-control" placeholder="Nombre o documento...">
           <button type="button" class="btn btn-primary" id="btnBuscarCliente">Buscar</button>
+          <a href="/clientes/nuevo" class="btn btn-outline-success" target="_blank">+ Registrar</a>
         </div>
         <div class="table-wrapper">
           <table class="table table-bordered table-hover">
@@ -124,6 +155,7 @@
         <div class="input-group mb-3">
           <input type="text" id="buscarProductoInput" class="form-control" placeholder="Nombre del producto...">
           <button type="button" class="btn btn-primary" id="btnBuscarProducto">Buscar</button>
+          <a href="/productos/nuevo" class="btn btn-outline-success" target="_blank">+ Registrar</a>
         </div>
         <div class="table-wrapper">
           <table class="table table-bordered table-hover">
@@ -170,12 +202,74 @@ function inicializarFila(row) {
   if (select && stockSpan) {
     select.addEventListener('change', function () {
       actualizarStockDisplay(row);
+      recalcularFormularioTotal();
     });
   }
   if (cantidadInput && stockSpan) {
     cantidadInput.addEventListener('input', function () {
       validarCantidadStock(row);
+      recalcularFormularioTotal();
     });
+  }
+}
+
+function recalcularFormularioTotal() {
+  var rows = document.querySelectorAll('#tablaDetalle tbody tr');
+  var subtotalTotal = 0;
+  
+  rows.forEach(function (row) {
+    var prodId = row.querySelector('.producto-id').value;
+    if (!prodId) return;
+    
+    var tipo = row.querySelector('.tipo-venta-select').value;
+    var cant = parseInt(row.querySelector('.cantidad-input').value, 10) || 0;
+    
+    var precio = 0;
+    if (tipo === 'UNIDAD') {
+      precio = parseFloat(row.getAttribute('data-precio-unitario')) || 0;
+    } else {
+      precio = parseFloat(row.getAttribute('data-precio-fraccion')) || 0;
+    }
+    
+    subtotalTotal += precio * cant;
+  });
+  
+  var tipoCompDisplay = document.getElementById('tipoComprobanteDisplay').value || '';
+  var esFactura = tipoCompDisplay.indexOf('FACTURA') !== -1;
+  
+  var subtotalElement = document.getElementById('formSubtotal');
+  var igvElement = document.getElementById('formIgv');
+  var totalElement = document.getElementById('formTotal');
+  
+  if (subtotalElement && igvElement && totalElement) {
+    subtotalElement.textContent = subtotalTotal.toFixed(2);
+    if (esFactura) {
+      var igv = subtotalTotal * 0.18;
+      var total = subtotalTotal + igv;
+      igvElement.textContent = igv.toFixed(2);
+      totalElement.textContent = total.toFixed(2);
+    } else {
+      igvElement.textContent = '0.00';
+      totalElement.textContent = subtotalTotal.toFixed(2);
+    }
+  }
+}
+
+function quitarFila(btn) {
+  var table = document.getElementById('tablaDetalle').getElementsByTagName('tbody')[0];
+  if (table.getElementsByTagName('tr').length > 1) {
+    btn.closest('tr').remove();
+    recalcularFormularioTotal();
+  } else {
+    var row = btn.closest('tr');
+    row.querySelector('.producto-id').value = '';
+    row.querySelector('.producto-nombre').value = '';
+    row.querySelector('.cantidad-input').value = '1';
+    row.querySelector('.tipo-venta-select').selectedIndex = 0;
+    row.querySelector('.stock-display').textContent = '—';
+    row.removeAttribute('data-precio-unitario');
+    row.removeAttribute('data-precio-fraccion');
+    recalcularFormularioTotal();
   }
 }
 
@@ -190,15 +284,46 @@ function actualizarStockDisplay(row) {
     .then(function (data) {
       var prod = data.find(function (p) { return p.codProducto == prodId.value; });
       if (prod) {
+        row.setAttribute('data-precio-fraccion', prod.precioFraccion);
+        row.setAttribute('data-cantidad-item', prod.cantidadItem);
         if (tipo === 'UNIDAD') {
           stockSpan.textContent = prod.cantidadUnidad + ' und';
+          select.classList.remove('is-invalid');
+          var fb = select.closest('td').querySelector('.invalid-feedback') || select.parentNode.querySelector('.invalid-feedback');
+          if (fb) fb.textContent = '';
         } else {
-          var items = prod.cantidadItem || 1;
-          var totalFracc = prod.cantidadFraccion + (prod.cantidadUnidad > 0 ? (prod.cantidadUnidad - 1) * items : 0);
-          stockSpan.textContent = totalFracc + ' fracc';
+          var precioFrac = parseFloat(prod.precioFraccion) || 0;
+          if (precioFrac <= 0) {
+            select.classList.add('is-invalid');
+            var fb = select.closest('td').querySelector('.invalid-feedback') || select.parentNode.querySelector('.invalid-feedback');
+            if (fb) {
+              fb.textContent = 'No tiene precio de fracción configurado';
+            }
+            stockSpan.textContent = '0 fracc';
+          } else {
+            select.classList.remove('is-invalid');
+            var fb = select.closest('td').querySelector('.invalid-feedback') || select.parentNode.querySelector('.invalid-feedback');
+            if (fb) fb.textContent = '';
+            var items = prod.cantidadItem || 1;
+            var totalFracc = prod.cantidadFraccion + (prod.cantidadUnidad * items);
+            stockSpan.textContent = totalFracc + ' fracc';
+          }
         }
+        validarCantidadStock(row);
       }
     });
+}
+
+function validarVentaForm() {
+  var inputsInvalidos = document.querySelectorAll('#tablaDetalle .is-invalid');
+  if (inputsInvalidos.length > 0) {
+    alert('Por favor, corrija los errores en el detalle de productos antes de registrar la venta.');
+    try {
+      inputsInvalidos[0].focus();
+    } catch(e) {}
+    return false;
+  }
+  return true;
 }
 
 function validarCantidadStock(row) {
@@ -253,6 +378,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
   buscarClientes('');
   buscarProductos('');
+
+  
+  var urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.has('exito') && urlParams.get('id')) {
+    var newSaleId = urlParams.get('id');
+    var btnComp = document.getElementById('btnVerComprobante');
+    if (btnComp) {
+      btnComp.style.display = 'inline-block';
+      btnComp.addEventListener('click', function() {
+        verDetalleVentaCreada(newSaleId);
+      });
+    }
+  }
 });
 
 function buscarClientes(q) {
@@ -264,7 +402,7 @@ function buscarClientes(q) {
       data.forEach(function (c) {
         var tr = document.createElement('tr');
         tr.style.cursor = 'pointer';
-        tr.innerHTML = '<td>' + c.codCliente + '</td><td>' + (c.nombreCliente || '') + '</td><td>' + c.numeroDocumento + '</td><td>' + (c.tipoDocumento ? c.tipoDocumento.descripcion : '') + '</td><td><button class="btn btn-sm btn-outline-primary">Seleccionar</button></td>';
+        tr.innerHTML = '<td>' + c.codCliente + '</td><td>' + (c.nombreCliente || c.razonSocial || '') + '</td><td>' + c.numeroDocumento + '</td><td>' + (c.tipoDocumento ? c.tipoDocumento.descripcion : '') + '</td><td><button class="btn btn-sm btn-outline-primary">Seleccionar</button></td>';
         tr.addEventListener('click', function () {
           document.getElementById('clienteId').value = c.codCliente;
           document.getElementById('clienteNombre').value = (c.nombreCliente || c.razonSocial || '') + ' - ' + c.numeroDocumento;
@@ -277,6 +415,7 @@ function buscarClientes(q) {
             tipoComp.value = 'BOLETA (B001)';
             tipoDocHidden.value = '1';
           }
+          recalcularFormularioTotal();
           bootstrap.Modal.getInstance(document.getElementById('modalCliente')).hide();
         });
         tbody.appendChild(tr);
@@ -298,8 +437,11 @@ function buscarProductos(q) {
           var targetRow = filaProductoActual || document.querySelector('#tablaDetalle tbody tr:last-child');
           targetRow.querySelector('.producto-id').value = p.codProducto;
           targetRow.querySelector('.producto-nombre').value = p.nombreProducto;
+          targetRow.setAttribute('data-precio-unitario', p.precioUnitario);
+          targetRow.setAttribute('data-precio-fraccion', p.precioFraccion);
           filaProductoActual = null;
           actualizarStockDisplay(targetRow);
+          recalcularFormularioTotal();
           var modal = bootstrap.Modal.getInstance(document.getElementById('modalProducto'));
           if (modal) modal.hide();
         });
@@ -307,7 +449,100 @@ function buscarProductos(q) {
       });
     });
 }
+function verDetalleVentaCreada(id) {
+  
+  fetch('/ventas/' + id)
+    .then(function (r) { return r.json(); })
+    .then(function (cab) {
+      document.getElementById('lblComprobante').textContent = cab.comprobante;
+      document.getElementById('lblCliente').textContent = cab.cliente;
+      document.getElementById('lblFecha').textContent = cab.fecha;
+      document.getElementById('lblUsuario').textContent = cab.usuario;
+      
+      var lblEstado = document.getElementById('lblEstado');
+      lblEstado.textContent = cab.estado;
+      lblEstado.className = 'badge ' + (cab.estado === 'Activo' ? 'bg-success' : 'bg-danger');
+      
+      document.getElementById('lblSubtotal').textContent = parseFloat(cab.subtotal).toFixed(2);
+      document.getElementById('lblIgv').textContent = parseFloat(cab.igv).toFixed(2);
+      document.getElementById('lblTotal').textContent = parseFloat(cab.total).toFixed(2);
+      
+      
+      var tbody = document.querySelector('#tablaDetalleProductos tbody');
+      tbody.innerHTML = '<tr><td colspan="5" class="text-center">Cargando productos...</td></tr>';
+      
+      fetch('/ventas/detalle/' + id)
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          tbody.innerHTML = '';
+          data.forEach(function (d) {
+            var tr = document.createElement('tr');
+            tr.innerHTML = '<td>' + d.productoNombre + '</td>' +
+                           '<td>' + (d.tipoVenta === 'FRACCION' ? 'Fracción' : 'Unidad') + '</td>' +
+                           '<td>' + d.cantidad + '</td>' +
+                           '<td>S/ ' + parseFloat(d.precioUnitario).toFixed(2) + '</td>' +
+                           '<td>S/ ' + parseFloat(d.subtotal).toFixed(2) + '</td>';
+            tbody.appendChild(tr);
+          });
+        })
+        .catch(function () {
+          tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Error al cargar productos.</td></tr>';
+        });
+
+      
+      var modal = new bootstrap.Modal(document.getElementById('detalleVentaModal'));
+      modal.show();
+    });
+}
 </script>
+
+
+<div class="modal fade" id="detalleVentaModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Detalle de Venta: <span id="lblComprobante" class="fw-bold text-primary">—</span></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <p class="mb-1"><strong>Cliente:</strong> <span id="lblCliente">—</span></p>
+            <p class="mb-1"><strong>Fecha y Hora:</strong> <span id="lblFecha">—</span></p>
+            <p class="mb-1"><strong>Vendedor:</strong> <span id="lblUsuario">—</span></p>
+          </div>
+          <div class="col-md-6 text-end">
+            <p class="mb-1"><strong>Estado:</strong> <span id="lblEstado" class="badge">—</span></p>
+            <p class="mb-1"><strong>Subtotal:</strong> S/ <span id="lblSubtotal">0.00</span></p>
+            <p class="mb-1"><strong>IGV:</strong> S/ <span id="lblIgv">0.00</span></p>
+            <p class="mb-1" style="font-size: 1.1rem;"><strong>Total:</strong> <strong class="text-primary">S/ <span id="lblTotal">0.00</span></strong></p>
+          </div>
+        </div>
+        <hr>
+        <h6 class="section-title">Productos Vendidos</h6>
+        <div class="table-wrapper">
+          <table class="table table-bordered table-hover table-sm" id="tablaDetalleProductos">
+            <thead class="table-dark">
+              <tr>
+                <th>Producto</th>
+                <th>Tipo Venta</th>
+                <th>Cantidad</th>
+                <th>P. Unitario</th>
+                <th>Subtotal</th>
+              </tr>
+            </thead>
+            <tbody>
+              
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <div th:replace="fragmentos :: scripts"></div>
 </body>

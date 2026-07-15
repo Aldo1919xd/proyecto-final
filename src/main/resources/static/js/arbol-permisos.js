@@ -77,11 +77,11 @@ document.addEventListener('DOMContentLoaded', function () {
     var master = li.querySelector('.tree-master-check');
     if (!master) return;
     var checks = getActionCheckboxes(li);
-    var allChecked = checks.length > 0;
+    var anyChecked = false;
     checks.forEach(function (cb) {
-      if (!cb.checked) allChecked = false;
+      if (cb.checked) anyChecked = true;
     });
-    master.checked = allChecked;
+    master.checked = anyChecked;
   }
 
   function propagatePermission(li, name, checked) {
