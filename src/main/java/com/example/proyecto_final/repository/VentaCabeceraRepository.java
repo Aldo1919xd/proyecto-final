@@ -6,4 +6,5 @@ import java.util.List;
 
 public interface VentaCabeceraRepository extends JpaRepository<VentaCabecera, Integer> {
     List<VentaCabecera> findByEstadoTrueOrderByFechaHoraDesc();
+    List<VentaCabecera> findAllByOrderByFechaHoraDesc();
 }

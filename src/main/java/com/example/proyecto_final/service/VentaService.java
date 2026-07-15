@@ -40,7 +40,7 @@ public class VentaService {
     }
 
     public List<VentaCabecera> listarTodas() {
-        return ventaCabeceraRepository.findByEstadoTrueOrderByFechaHoraDesc();
+        return ventaCabeceraRepository.findAllByOrderByFechaHoraDesc();
     }
 
     @Transactional
