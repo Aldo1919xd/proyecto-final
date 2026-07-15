@@ -49,8 +49,8 @@ public class UsuarioController {
     }
 
     @GetMapping("/nuevo")
-    public String nuevo(Authentication auth, Model model){
-        if(!permisoService.tieneCrear(auth, "Usuarios")) return "redirect:/usuarios?error=sinPermiso";
+    public String nuevo(Authentication auth, Model model) {
+        if (!permisoService.tieneCrear(auth, "Usuarios")) return "redirect:/usuarios?error=sinPermiso";
         model.addAttribute("user", new Usuario());
         model.addAttribute("roles", rolService.listarActivos());
         return "usuarios/formulario";
@@ -58,17 +58,18 @@ public class UsuarioController {
 
     @PostMapping("/guardar")
     public String guardar(@Valid @ModelAttribute("user") Usuario usuario, BindingResult result,
-                        Model model, Authentication auth, HttpServletRequest request){
+                            Model model, Authentication auth, HttpServletRequest request) {
         boolean esNuevo = usuario.getIdUsuario() == null;
-        if(esNuevo && !permisoService.tieneCrear(auth, "Usuarios")) return "redirect:/usuarios?error=sinPermiso";
-        if(!esNuevo && !permisoService.tieneEditar(auth, "Usuarios")) return "redirect:/usuarios?error=sinPermiso";
-        if(esNuevo && (usuario.getPassword() == null || usuario.getPassword().isBlank())) {
-            result.rejectValue("password", "error.usuario", "La contraseña es obligatoria");
+        if (esNuevo && !permisoService.tieneCrear(auth, "Usuarios")) return "redirect:/usuarios?error=sinPermiso";
+        if (!esNuevo && !permisoService.tieneEditar(auth, "Usuarios")) return "redirect:/usuarios?error=sinPermiso";
+        if (esNuevo && (usuario.getPassword() == null || usuario.getPassword().isBlank())) {
+            result.rejectValue("password", "error.usuario", "La contrasena es obligatoria");
         }
-        if(usuario.getPassword() != null && !usuario.getPassword().isBlank() && usuario.getPassword().length() < 6){
-            result.rejectValue("password", "error.usuario", "La contraseña debe tener al menos 6 caracteres");
+        if (usuario.getPassword() != null && !usuario.getPassword().isBlank()
+                && usuario.getPassword().length() < 6) {
+            result.rejectValue("password", "error.usuario", "La contrasena debe tener al menos 6 caracteres");
         }
-        if(result.hasErrors()){
+        if (result.hasErrors()) {
             model.addAttribute("roles", rolService.listarActivos());
             return "usuarios/formulario";
         }
