@@ -160,6 +160,16 @@ public class UsuarioController {
         return "redirect:/usuarios/2fa/estado?exito";
     }
 
+    
+    @GetMapping("/2fa/estado")
+    public String estado2fa(Model model, Authentication auth){
+        Usuario actual = usuarioService.buscarPorUsuario(auth.getName()).orElseThrow();
+        boolean activo = actual.getSecretKey2fa() != null && !actual.getSecretKey2fa().isEmpty();
+        model.addAttribute("activo",activo);
+        model.addAttribute("exito", activo);
+        return "usuarios/2fa-estado";
+    }
+
     @GetMapping("/2fa/desactivar")
     public String desactivar2faForm(Model model, Authentication auth){
         Usuario actual = usuarioService.buscarPorUsuario(auth.getName()).orElseThrow();

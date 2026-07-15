@@ -45,7 +45,7 @@ public class UsuarioService {
         boolean esNuevo = usuario.getIdUsuario() == null;
         if(esNuevo){
             usuario.setPassword(passwordEncoder.encode(usuario.getPassword()));
-            usuario.setUsuarioCreacion(usuario);
+            usuario.setUsuarioCreacion(usuarioActual);
         } else {
             Usuario existente = usuarioRepository.findById(usuario.getIdUsuario()).orElseThrow();
             if(usuario.getPassword() != null && !usuario.getPassword().isEmpty()
