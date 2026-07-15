@@ -16,7 +16,7 @@
                     <input type="text" name="usuario" class="form-control sin-especiales"
                         th:value="${user.usuario}" th:errorclass="is-invalid"
                         required maxlength="30" data-val="username">
-                    <div class="invalid-feedback" th:errors="*{usuario}"></div>
+                    <div class="invalid-feedback" th:text="${#fields.hasErrors('usuario')} ? ${#fields.errors('usuario')[0]} : ''"></div>
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Rol</label>
@@ -28,7 +28,7 @@
                         </select>
                         <a href="/roles/nuevo" class="btn btn-outline-success" target="_blank">+ Registrar</a>
                     </div>
-                    <div class="invalid-feedback" th:errors="*{rol}"></div>
+                    <div class="invalid-feedback" th:text="${#fields.hasErrors('rol')} ? ${#fields.errors('rol')[0]} : ''"></div>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Password</label>
@@ -38,7 +38,7 @@
                         th:required="${user.idUsuario == null}"
                         maxlength="40"
                         data-val="password">
-                    <div class="invalid-feedback" th:errors="*{password}"></div>
+                    <div class="invalid-feedback" th:text="${#fields.hasErrors('password')} ? ${#fields.errors('password')[0]} : ''"></div>
                 </div>
                 <div class="d-flex gap-2 mt-4">
                     <button type="submit" class="btn btn-primary">Guardar</button>

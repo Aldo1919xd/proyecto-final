@@ -10,7 +10,7 @@
         <p class="text-muted">Escanea el codigo QR con tu app Google Authenticator y luego ingresa el codigo de 6 digitos para verificar.</p>
         <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
         <div class="card-form text-center mb-4">
-            <div id="qrcode" class="mb-3 d-inline-block"></div>
+            <div id="qrcode" class="mb-3 d-inline-block" th:data-uri="${uri}"></div>
             <div class="mb-3">
             <label class="form-label">O puedes ingresar manualmente este codigo:</label>
             <div class="input-group">
@@ -39,15 +39,18 @@
 </div>
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 <script>
-    var uri = '[[${uri}]]';
-    new QRCode(document.getElementById('qrcode'), {
-        text: uri,
-        width: 220,
-        height: 220,
-        colorDark: '#286983',
-        colorLight: '#faf4ed',
-        correctLevel: QRCode.CorrectLevel.H
-    });
+    var qrElement = document.getElementById('qrcode');
+    var uri = qrElement.getAttribute('data-uri');
+    if (uri) {
+        new QRCode(qrElement, {
+            text: uri,
+            width: 220,
+            height: 220,
+            colorDark: '#286983',
+            colorLight: '#faf4ed',
+            correctLevel: QRCode.CorrectLevel.H
+        });
+    }
     function copiarSecreto() {
         var input = document.getElementById('secretKey');
         input.select();

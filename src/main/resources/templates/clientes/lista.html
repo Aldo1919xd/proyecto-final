@@ -26,7 +26,7 @@
           <td th:text="${c.codCliente}">1</td>
           <td th:text="${c.tipoDocumento.descripcion}">DNI</td>
           <td th:text="${c.numeroDocumento}">12345678</td>
-          <td th:text="${c.nombreCliente}">Nombre</td>
+          <td th:text="${c.nombreCliente != null && !c.nombreCliente.isEmpty() ? c.nombreCliente : (c.razonSocial != null ? c.razonSocial : '')}">Nombre</td>
           <td>
             <span th:if="${c.estado}" class="badge bg-success">Activo</span>
             <span th:unless="${c.estado}" class="badge bg-danger">Inactivo</span>
